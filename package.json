@@ -2,6 +2,7 @@
   "name": "alibaba-careers-mcp-server",
   "version": "1.0.0",
   "description": "MCP server for Alibaba careers sites",
+  "license": "MIT",
   "type": "module",
   "main": "dist/src/index.js",
   "bin": { "alibaba-careers-mcp": "dist/src/stdio.js" },
@@ -9,8 +10,21 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
+    "prepublishOnly": "npm run build",
     "start": "node dist/src/index.js",
     "stdio": "node dist/src/stdio.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Eliseowzy/alibaba-careers-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Eliseowzy/alibaba-careers-mcp-server/issues"
+  },
+  "homepage": "https://github.com/Eliseowzy/alibaba-careers-mcp-server#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
