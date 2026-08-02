@@ -15,7 +15,7 @@
   "mcpServers": {
     "alibaba-careers": {
       "command": "npx",
-      "args": ["-y", "alibaba-careers-mcp-server"]
+      "args": ["-y", "alibaba-careers-mcp"]
     }
   }
 }
