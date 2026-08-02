@@ -1,0 +1,29 @@
+{
+  "name": "alibaba-careers-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Alibaba careers sites",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "bin": { "alibaba-careers-mcp": "dist/src/stdio.js" },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/src/index.js",
+    "stdio": "node dist/src/stdio.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "express": "^5.1.0",
+    "lru-cache": "^11.1.0",
+    "pino": "^9.9.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  }
+}
