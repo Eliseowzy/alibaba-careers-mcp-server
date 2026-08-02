@@ -1,6 +1,6 @@
 import type { CareerSite } from "../../config.js";
 import { clearSession, getSession } from "./session.js";
-import type { ApiEnvelope, CategoryNode, SearchContent, SearchParams } from "./types.js";
+import type { ApiEnvelope, CategoryNode, DetailParams, RawJob, SearchContent, SearchParams } from "./types.js";
 
 async function post<T>(site: CareerSite, path: string, body: object, retry = true): Promise<T> {
   const session = await getSession(site);
@@ -34,4 +34,16 @@ export function searchPositions(site: CareerSite, params: SearchParams) {
     deptCodes: params.deptCodes ?? [], key: params.keyword ?? "", pageIndex: params.pageIndex ?? 1, pageSize: params.pageSize ?? 10,
     regions: params.regions ?? "", subCategories: params.subCategory ?? "", shareType: "", shareId: "", myReferralShareCode: ""
   });
+}
+
+export async function getPositionDetail(site: CareerSite, params: DetailParams) {
+  const detail = await post<RawJob | null>(site, "position/detail", {
+    channel: "group_official_site",
+    language: params.language ?? "zh",
+    id: params.id
+  });
+  if (!detail || detail.id === undefined || !detail.name) {
+    throw new Error(`${site.domain} 未找到岗位 ${params.id}，岗位可能不存在或已下线`);
+  }
+  return detail;
 }

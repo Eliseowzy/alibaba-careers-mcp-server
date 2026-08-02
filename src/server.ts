@@ -3,7 +3,7 @@ import { z } from "zod";
 import { cached } from "./cache.js";
 import { CAREER_SITES, resolveSite } from "./config.js";
 import type { Logger } from "./logger.js";
-import { getCategories, searchPositions } from "./api/alibaba/client.js";
+import { getCategories, getPositionDetail, searchPositions } from "./api/alibaba/client.js";
 import type { CategoryNode, RawJob } from "./api/alibaba/types.js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -25,19 +25,56 @@ function truncate(value?: string): string | undefined {
   return `${value.slice(0, 200)}...`;
 }
 
-function mapJob(job: RawJob, baseUrl: string) {
+function absoluteJobUrl(job: RawJob, baseUrl: string): string {
   const path = job.positionUrl ?? "";
+  if (/^https?:\/\//.test(path)) return path;
+  if (path) return `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
+  return `${baseUrl}/off-campus/position-detail?positionId=${encodeURIComponent(String(job.id))}`;
+}
+
+function withoutNullish<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== null && item !== undefined)) as Partial<T>;
+}
+
+function mapJob(job: RawJob, baseUrl: string) {
   return {
     id: job.id, title: job.name, city: (job.workLocations ?? []).join(", "), category: job.categories ?? [],
     subCategory: job.categoryName, department: job.department, degree: job.degree, experience: job.experience,
     updateTime: job.modifyTime ? new Date(job.modifyTime).toISOString() : undefined,
-    url: /^https?:\/\//.test(path) ? path : `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`,
+    url: absoluteJobUrl(job, baseUrl),
     requirement: truncate(job.requirement), description: truncate(job.description)
   };
 }
 
+function mapJobDetail(job: RawJob, site: ReturnType<typeof resolveSite>) {
+  return withoutNullish({
+    site: site.domain,
+    displayName: site.displayName,
+    id: job.id,
+    title: job.name,
+    status: job.status,
+    code: job.code,
+    city: (job.workLocations ?? []).join(", "),
+    workLocations: job.workLocations ?? [],
+    interviewLocations: job.interviewLocations,
+    category: job.categories ?? [],
+    subCategory: job.categoryName,
+    department: job.department,
+    degree: job.degree,
+    experience: job.experience,
+    tags: job.tags,
+    positionType: job.positionType,
+    project: job.project,
+    publishTime: job.publishTime ? new Date(job.publishTime).toISOString() : undefined,
+    updateTime: job.modifyTime ? new Date(job.modifyTime).toISOString() : undefined,
+    url: absoluteJobUrl(job, site.baseUrl),
+    requirement: job.requirement,
+    description: job.description
+  });
+}
+
 export function createMcpServer(logger: Logger): McpServer {
-  const server = new McpServer({ name: "alibaba-careers", version: "1.0.0" });
+  const server = new McpServer({ name: "alibaba-careers", version: "1.1.0" });
 
   server.registerTool("list_alibaba_career_sites", { description: "列出支持的阿里系社招站点及默认站点。" }, async () => response({
     defaultSite: CAREER_SITES.find((site) => site.isDefault)?.domain,
@@ -79,6 +116,29 @@ export function createMcpServer(logger: Logger): McpServer {
     return response({ total: result.totalCount, pageIndex: result.currentPage, pageSize: result.pageSize,
       hasMore: result.currentPage * result.pageSize < result.totalCount, site: site.domain,
       jobs: result.datas.map((job) => mapJob(job, site.baseUrl)) });
+  });
+
+  server.registerTool("get_job_detail", {
+    description: "查询指定阿里招聘站点的完整岗位详情。岗位 ID 可从 search_jobs 结果获取。",
+    inputSchema: {
+      id: z.union([
+        z.number().int().positive().safe(),
+        z.string().regex(/^\d+$/, "岗位 ID 必须是纯数字字符串")
+      ]).describe("岗位 ID，接受正整数或纯数字字符串"),
+      site: z.string().optional().describe("站点 siteKey 或域名，默认阿里控股集团"),
+      language: z.literal("zh").default("zh")
+    }
+  }, async ({ id, site: siteValue, language }) => {
+    const site = resolveSite(siteValue);
+    const normalizedId = String(id);
+    logger.info({ tool: "get_job_detail", site: site.domain, id: normalizedId }, "tool call");
+    const detail = await cached(
+      `detail:${site.siteKey}:${language}:${normalizedId}`,
+      TEN_MINUTES,
+      () => getPositionDetail(site, { id: normalizedId, language }),
+      logger
+    );
+    return response(mapJobDetail(detail, site));
   });
   return server;
 }

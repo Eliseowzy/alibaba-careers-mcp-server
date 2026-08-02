@@ -175,3 +175,21 @@ POST /position/search?_csrf={XSRF_TOKEN}
 ```
 
 当前python示例代码 已按这个顺序实现，并且会把 cookie 缓存在同目录 `cookies.txt`，避免每次都重新获取。
+
+**3. 查询岗位详情**
+
+```http
+POST https://{招聘站点域名}/position/detail?_csrf={XSRF_TOKEN}
+```
+
+请求 Body：
+
+```json
+{
+  "channel": "group_official_site",
+  "language": "zh",
+  "id": "100004023017"
+}
+```
+
+响应沿用 `{ success, errorMsg, errorCode, content }` 包络，`content` 为单个完整岗位对象，包含岗位名称、地点、分类、任职要求、岗位描述、发布时间和更新时间等字段。
